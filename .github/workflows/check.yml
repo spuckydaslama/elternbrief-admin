@@ -1,0 +1,30 @@
+name: Check the Code
+
+on:
+  push:
+    branches:
+      - feature/**
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '22.x'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enable Corepack
+        run: corepack enable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+      - name: 'Lint'
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm lint
+          pnpm check
