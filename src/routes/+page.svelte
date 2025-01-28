@@ -114,6 +114,7 @@
 			};
 			if (orderResponseData.code !== '200') {
 				brief.error = orderResponseData.error || `Error: ${orderResponseData.code}`;
+				return;
 			}
 			const hash = brief.hash;
 			if (hash) {
