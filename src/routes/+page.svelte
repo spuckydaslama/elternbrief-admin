@@ -5,6 +5,8 @@
 	import { SvelteMap } from 'svelte/reactivity';
 	import { Button } from '$lib/components/ui/button';
 	import { Loader, Send } from 'lucide-svelte';
+	import { Label } from '$lib/components/ui/label';
+	import { Switch } from '$lib/components/ui/switch';
 
 	const createHash = (input: Brief): string => {
 		const hashCode: number = JSON.stringify(input)
@@ -39,6 +41,13 @@
 	let env = $state<Env>();
 	let briefe = $state<Brief[]>([]);
 	let alreadyProcessedBriefe = $state<Map<string, string>>(new SvelteMap());
+	let showAll = $state(false);
+
+	let filteredBriefe = $derived.by(() => {
+		return showAll
+			? briefe
+			: briefe.filter((brief) => !brief.hash || !alreadyProcessedBriefe.has(brief.hash));
+	});
 
 	onMount(async () => {
 		const envResponse = await fetch('/loadEnv.php');
@@ -140,9 +149,13 @@
 	<title>Admininterface - Stimme für Kinder</title>
 </svelte:head>
 
-<div class="p-1 md:p-4">
+<div class="space-y-2 p-1 md:p-4">
+	<div class="flex items-center space-x-2">
+		<Switch id="show-all" bind:checked={showAll} />
+		<Label for="show-all" class="cursor-pointer">Zeige alle</Label>
+	</div>
 	<ul class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-		{#each briefe as brief}
+		{#each filteredBriefe as brief}
 			<li class="flex flex-col space-y-2 border p-4 shadow">
 				<div class="grow">
 					<div>{brief.created}</div>
