@@ -109,10 +109,10 @@
 				body: formData
 			});
 			const orderResponseData = (await orderResponse.json()) as unknown as {
-				code: string;
+				code: number;
 				error?: string;
 			};
-			if (orderResponseData.code !== '200') {
+			if (orderResponseData.code !== 200) {
 				brief.error = orderResponseData.error || `Error: ${orderResponseData.code}`;
 				return;
 			}
