@@ -46,7 +46,6 @@
 				.trim()
 				.split('\n')
 				.map((line) => JSON.parse(line) as Processed);
-			console.log(alreadyProcessedParsed);
 			alreadyProcessedBriefe = new SvelteMap(
 				alreadyProcessedParsed.map((entry) => [entry.hash, entry])
 			);
@@ -193,7 +192,6 @@
 				{#if brief.error}
 					<div class="text-destructive">{brief.error}</div>
 				{/if}
-				{brief.hash}
 			</li>
 		{/each}
 	</ul>
