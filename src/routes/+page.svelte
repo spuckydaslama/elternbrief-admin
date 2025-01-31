@@ -4,9 +4,11 @@
 	import { onMount } from 'svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 	import { Button } from '$lib/components/ui/button';
-	import { Loader, Send } from 'lucide-svelte';
+	import { EyeOff, Loader, Send } from 'lucide-svelte';
 	import { Label } from '$lib/components/ui/label';
 	import { Switch } from '$lib/components/ui/switch';
+	import ProcessedInfo from './_components/ProcessedInfo.svelte';
+	import type { Brief, Env, Processed } from '$lib/components/types';
 
 	const createHash = (input: Brief): string => {
 		const hashCode: number = JSON.stringify(input)
@@ -16,31 +18,10 @@
 			}, 0);
 		return hashCode.toString(16);
 	};
-	type Env = {
-		api_key: string;
-		identifier: string;
-		url: string;
-	};
-	type Brief = {
-		text: string;
-		addressline1: string;
-		addressline2: string;
-		addressline3: string;
-		addressline4: string;
-		addressline5: string;
-		created: string;
-		hash?: string;
-		error?: string;
-		isSending?: boolean;
-	};
-	type Processed = {
-		processedAt: string;
-		hash: string;
-	};
 
 	let env = $state<Env>();
 	let briefe = $state<Brief[]>([]);
-	let alreadyProcessedBriefe = $state<Map<string, string>>(new SvelteMap());
+	let alreadyProcessedBriefe = $state<Map<string, Processed>>(new SvelteMap());
 	let showAll = $state(false);
 
 	let filteredBriefe = $derived.by(() => {
@@ -66,7 +47,7 @@
 				.split('\n')
 				.map((line) => JSON.parse(line) as Processed);
 			alreadyProcessedBriefe = new SvelteMap(
-				alreadyProcessedParsed.map((entry) => [entry.hash, entry.processedAt])
+				alreadyProcessedParsed.map((entry) => [entry.hash, entry])
 			);
 		} catch (error: unknown) {
 			console.error(error);
@@ -89,6 +70,19 @@
 
 		briefe = dataWithHashed.sort((a, b) => (a.created < b.created ? 1 : -1));
 	});
+
+	const storeProcessed = async (hash: string, status: Processed['status']) => {
+		const processed: Processed = {
+			processedAt: new Date().toISOString(),
+			hash,
+			status
+		};
+		await fetch('/store.php', {
+			method: 'POST',
+			body: JSON.stringify(processed)
+		});
+		alreadyProcessedBriefe.set(hash, processed);
+	};
 
 	const bestellen = async (brief: Brief) => {
 		if (!env) {
@@ -127,12 +121,7 @@
 			}
 			const hash = brief.hash;
 			if (hash) {
-				const now = new Date().toISOString();
-				await fetch('/store.php', {
-					method: 'POST',
-					body: JSON.stringify({ hash, processedAt: now })
-				});
-				alreadyProcessedBriefe.set(hash, new Date().toISOString());
+				await storeProcessed(hash, 'success');
 			}
 		} catch (error: unknown) {
 			if (error instanceof Error) {
@@ -141,6 +130,17 @@
 			console.error(error);
 		} finally {
 			brief.isSending = false;
+		}
+	};
+
+	const ignorieren = async (brief: Brief) => {
+		const hash = brief.hash;
+		if (hash) {
+			try {
+				await storeProcessed(hash, 'ignored');
+			} catch (error: unknown) {
+				console.error(error);
+			}
 		}
 	};
 </script>
@@ -169,11 +169,12 @@
 				<div class="flex items-center gap-2">
 					<div class="grow">
 						{#if brief.hash && alreadyProcessedBriefe.has(brief.hash)}
-							<div class="text-sm font-bold text-postkarteCta">
-								Processed at: {alreadyProcessedBriefe.get(brief.hash)}
-							</div>
+							<ProcessedInfo value={alreadyProcessedBriefe.get(brief.hash)} />
 						{/if}
 					</div>
+					<Button disabled={brief.isSending} variant="secondary" onclick={() => ignorieren(brief)}>
+						Ignorieren <EyeOff />
+					</Button>
 					<Button
 						disabled={brief.isSending}
 						variant={brief.hash && alreadyProcessedBriefe.has(brief.hash)
